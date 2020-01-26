@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="ef0cd29b-624b-4a14-93b6-2110c40213f0" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="700e1ed4-6650-4612-b937-d9e0f07c7afb" >
+		<wsc:connection wsdlLocation="http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL" service="CountryInfoService" port="CountryInfoServiceSoap12" address="http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso" />
+	</wsc:config>
+	<flow name="newq4Flow" doc:id="2697bf58-7ddb-4c73-9e92-2a9b3a4950e9" initialState="stopped">
+		<http:listener doc:name="Listener" doc:id="8b4ffbbf-3f15-4d7b-b96c-36af4a5979e8" path="/service" config-ref="HTTP_Listener_config"/>
+		<wsc:consume doc:id="67940488-9cbb-41ed-92b7-3f84e0d03e45" config-ref="Web_Service_Consumer_Config" operation="FullCountryInfoAllCountries"/>
+		<ee:transform doc:name="Transform Message" doc:id="a34cedce-7e93-4bfd-a08d-fc4da03582d5">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="5e054c68-9848-42ea-b8ac-8a614ac52c5d" />
+		<ee:transform doc:name="Transform Message" doc:id="510460b0-2fc6-4641-af32-827ea335a8c7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.body.ListOfCountryNamesGroupedByContinentResponse.ListOfCountryNamesGroupedByContinentResult.tCountryCodeAndNameGroupedByContinent]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="dbb7951b-fda6-40e5-8c24-999764be5d6f" name="newq4Flow1"/>
+	</flow>
+	<flow name="newq4Flow1" doc:id="166f1870-4f37-49ca-bcaa-2195f239e0f2" initialState="stopped">
+		<wsc:consume operation="FullCountryInfoAllCountries" doc:name="Consume" doc:id="d0fb6977-2bda-4d6e-a3a2-2f54c5367ac5" config-ref="Web_Service_Consumer_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="89716139-24ca-402c-9f30-18d6d3b76f64">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.body.FullCountryInfoAllCountriesResponse.FullCountryInfoAllCountriesResult.*tCountryInfo filter($.sCurrencyISOCode == "USD") map((items,index) -> {
+	  "sName":items.sName,
+	  "sContinentCode":items.sContinentCode
+} )]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="newq4Flow2" doc:id="3ec261a2-f8c0-48cd-9075-ac6e7b218c15" initialState="started">
+		<http:listener doc:name="Listener" doc:id="df4be6f1-f105-4be8-abbc-2a79be750ebf" config-ref="HTTP_Listener_config" path="/service"/>
+		<wsc:consume operation="FullCountryInfoAllCountries" doc:name="Consume" doc:id="45b47c34-e192-4e78-bc22-bffb702ebc1f" config-ref="Web_Service_Consumer_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="4bdcaef5-c6b9-4064-ae1c-0c32085196f7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.body.FullCountryInfoAllCountriesResponse.FullCountryInfoAllCountriesResult.*tCountryInfo filter($.sCurrencyISOCode == "USD") map((items,index) -> {
+	  "sName":items.sName,
+	  "sContinentCode":items.sContinentCode,
+	  "s language": items.French
+} )]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
